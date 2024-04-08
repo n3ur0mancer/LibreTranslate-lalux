@@ -164,6 +164,10 @@
 							<i aria-hidden="true" class="material-icons">description</i>
 							<span class="btn-text">{{ _h("Translate Files") }}</span>
 						</button>
+						<button type="button" class="btn btn-switch-type" @click="switchType('convert')" :class="{'active': translationType === 'convert'}">
+							<i aria-hidden="true" class="material-icons">autorenew</i>
+							<span class="btn-text">{{ _h("Convert PDF") }}</span>
+						</button>
 					</div>
 					<form id="translation-form" class="col s12">
 						<div class="row mb-0">
@@ -176,7 +180,6 @@
 									</template>
 								</select>
 							</div>
-
 							<div class="col s6 language-select">
 								<a href="javascript:void(0)" @click="swapLangs" class="btn-switch-language" aria-label="{{ _h('Swap source and target languages') }}">
 									<i class="material-icons">swap_horiz</i>
