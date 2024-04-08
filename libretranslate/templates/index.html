@@ -60,29 +60,13 @@
 				<button data-target="nav-mobile" class="sidenav-trigger"><i class="material-icons">menu</i></button>
 				<a id="logo-container" href="/" class="brand-logo noline">
 					<img src="{{ url_for('static', filename='icon.svg') }}" alt="" class="logo">
-					<span>LibreTranslate</span>
+					<span>Translator</span>
 				</a>
 				<ul id="nav" class="right hide-on-med-and-down top-nav position-relative">
-					{% set menulinks %}
-					<li><a href="{{ swagger_url }}">{{ _h("API Docs") }}</a></li>
-					{% if get_api_key_link %}
-					<li><a href="{{ get_api_key_link }}">{{ _h("Get API Key") }}</a></li>
-					{% endif %}
-					<li><a href="https://github.com/LibreTranslate/LibreTranslate" rel="noopener noreferrer">{{ _h("GitHub") }}</a></li>
-					{% if api_keys %}
-					<li><a class="noline" href="javascript:setApiKey()" title="{{ _h('Set API Key') }}" aria-label="{{ _h('Set API Key') }}"><i class="material-icons">vpn_key</i></a></li>
-					{% endif %}
-					<li class="change-language"><a class="noline" href="javascript:void(0)" title="{{ _h('Change language') }}"><i class="material-icons">language</i></a>
-					</li>
-					<li class="locale-panel">
-						<select id="locales" onchange="changeLocale(this)">
-							{% for l in available_locales %}<option value="{{ l['code'] }}" {{ 'selected' if current_locale == l['code'] else ''}}>{{ l['name'] }}</option>{% endfor %}
-						</select>
-						<a href="https://hosted.weblate.org/projects/libretranslate/app/{{ current_locale }}/">{{ _h("Edit") }}<i class="material-icons">create</i></a>
-					</li>
+					
 					<li class="change-theme"><a class="noline" href="javascript:toggleColorScheme()" title="{{ _h('Toggle dark/light mode') }}"><i class="material-icons">lightbulb_outline</i></a>
 					</li>
-					{% endset %}
+					
 					{{ menulinks }}
 				</ul>
 				<ul id="nav-mobile" class="sidenav">
@@ -170,7 +154,7 @@
 		<div class="section no-pad-bot">
 			<div class="container">
 				<div class="row">
-					<h3 class="header center">{{ _h("Translation API") }}</h3>
+					<h3 class="header center">{{ _h("Start translating") }}</h3>
 					<div id="translation-type-btns" class="s12 center" v-if="filesTranslation === true">
 						<button type="button" class="btn btn-switch-type" @click="switchType('text')" :class="{'active': translationType === 'text'}">
 							<i aria-hidden="true" class="material-icons">title</i>
@@ -286,7 +270,7 @@
 				</div>
 			</div>
 		</div>
-
+<!--
 		<div class="section no-pad-bot" v-if="translationType !== 'files'">
 			<div class="container">
 				<div class="row center">
@@ -309,6 +293,7 @@
 				</div>
 			</div>
 		</div>
+ -->		
 		{% if web_version %}
 		<div class="section no-pad-bot">
 			<div class="container">
@@ -331,18 +316,9 @@
 	</main>
 
 	<footer class="page-footer">
-		<div class="container">
-			<div class="row">
-				<div class="col l12 s12">
-					<h5 class="white-text">{{ _h("LibreTranslate") }}</h5>
-					<p class="grey-text text-lighten-4">{{ _h("Free and Open Source Machine Translation API") }}</p>
-					<p>{{ _h("License:") }} <a class="grey-text text-lighten-4" href="https://www.gnu.org/licenses/agpl-3.0.en.html" rel="noopener noreferrer">AGPLv3</a></p>
-				</div>
-			</div>
-		</div>
 		<div class="footer-copyright center">
 			<p class="white-text">
-				{{ _h("Made with %(heart)s by %(contributors)s and powered by %(engine)s", heart='❤', contributors='<a class="white-text" href="https://github.com/LibreTranslate/LibreTranslate/graphs/contributors" rel="noopener noreferrer">%s</a>' % _h("%(libretranslate)s Contributors", libretranslate="LibreTranslate"), engine='<a class="white-text text-lighten-3" href="https://github.com/argosopentech/argos-translate/" rel="noopener noreferrer">Argos Translate</a>') }}
+				{{ _h("Made with %(heart)s and powered by %(engine)s", heart='❤', contributors='<a class="white-text" href="https://github.com/LibreTranslate/LibreTranslate/graphs/contributors" rel="noopener noreferrer">%s</a>' % _h("%(libretranslate)s Contributors", libretranslate="LibreTranslate"), engine='<a class="white-text text-lighten-3" href="https://github.com/argosopentech/argos-translate/" rel="noopener noreferrer">Argos Translate</a>') }}
 			</p>
 		</div>
 	</footer>

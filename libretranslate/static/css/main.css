@@ -7,7 +7,7 @@
   --border-color: #ccc;
   --fg-color: #000;
   --nav-fg-color: #fff;
-  --accent-color: #1565c0;
+  --accent-color: #FF6200;
 }
 
 @media (prefers-color-scheme: dark) {
