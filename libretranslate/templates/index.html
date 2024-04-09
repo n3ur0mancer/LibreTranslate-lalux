@@ -7,7 +7,7 @@
     <link rel="alternate" hreflang="{{ al.lang }}" href="{{ al.link }}" />
     {% endfor %} {% if web_version %}
     <title>
-      LibreTranslate - {{ _h("Free and Open Source Machine Translation API") }}
+      LALUX Translate - {{ _h("Free and Open Source Machine Translation API") }}
       🌐
     </title>
     <meta
@@ -85,20 +85,6 @@
     <script src="{{ url_for('static', filename='js/vue@2.js') }}"></script>
 
     {% if gaId %}
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id={{ gaId }}"
-    ></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag("js", new Date());
-      gtag("config", "{{ gaId }}");
-    </script>
-    {% endif %}
 
     <!-- Compiled and minified CSS -->
     <link
@@ -471,30 +457,6 @@
             </div>
           </div>
         </div>
-        <!--
-		<div class="section no-pad-bot" v-if="translationType !== 'files'">
-			<div class="container">
-				<div class="row center">
-					<div class="col s12 m12">
-
-					<div class="row center code-row-wrapper">
-						<div class="col s12 m12 l6 left-align code-box">
-							<p class="mb-0">{{ _h("Request") }}</p>
-							<pre class="code mt-0"><code class="language-javascript" v-html="$options.filters.highlight(requestCode)">
-							</code></pre>
-						</div>
-						<div class="col s12 m12 l6 left-align code-box">
-							<p class="mb-0">{{ _h("Response") }}</p>
-							<pre class="code mt-0"><code class="language-javascript" v-html="$options.filters.highlight(output)">
-							</code></pre>
-						</div>
-					</div>
-
-					</div>
-				</div>
-			</div>
-		</div>
- -->
         {% if web_version %}
         <div class="section no-pad-bot">
           <div class="container">
