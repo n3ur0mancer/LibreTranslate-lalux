@@ -753,10 +753,17 @@ def create_app(args):
         if not file.filename.lower().endswith('.pdf'):
             abort(400, description="Invalid file format. Only PDF files are supported.")
 
-        # Generate unique filenames for the uploaded and converted files
-        upload_filename = secure_filename(file.filename)
+        # Extract the base name of the uploaded file without its extension
+        base_filename = os.path.splitext(secure_filename(file.filename))[0]
+        # Ensure the base filename is not empty; revert to uuid if it is
+        if not base_filename:
+            base_filename = str(uuid.uuid4())
+
+        # Now create the full path for the uploaded PDF and the output DOCX
+        # Replace any spaces with underscores or any other character suitable for filenames
+        upload_filename = f"{base_filename}.pdf".replace(" ", "_")
         upload_filepath = os.path.join(get_upload_dir(), upload_filename)
-        output_filename = str(uuid.uuid4()) + '.docx'
+        output_filename = f"{base_filename}.docx".replace(" ", "_")
         output_filepath = os.path.join(get_upload_dir(), output_filename)
 
         try:
