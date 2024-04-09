@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function(){
             apiSecret: "{{ api_secret }}",
 
             convertType: "",
-            pdfFile: null, // To store the uploaded file
+            pdfFile: null, 
         },
         mounted: function() {
             const self = this;
@@ -462,7 +462,6 @@ document.addEventListener('DOMContentLoaded', function(){
                 }
             },
             convertPDFtoDOCX: function() {
-                console.log("Attempting to convert PDF to DOCX...");
                 if (!this.pdfFile) {
                     this.error = "Please select a PDF file first.";
                     handleNotification("Conversion Failed", this.error); // Assuming you have a similar function for notifications
@@ -483,17 +482,19 @@ document.addEventListener('DOMContentLoaded', function(){
                 this.loadingConversion = true; // Manage loading state for UI feedback
 
                 conversionRequest.onload = function() {
-                    if (conversionRequest.status === 200) {
+                    if (conversionRequest.readyState === 4 && conversionRequest.status === 200) {
                         try {
-                            let res = JSON.parse(this.response);
+                            let res = JSON.parse(conversionRequest.response);
                             if (res.downloadUrl) {
                                 self.loadingConversion = false;
                                 self.pdfFile = null; // Optionally reset the selected file
 
                                 let link = document.createElement("a");
                                 link.href = res.downloadUrl;
-                                link.download = "";
+                                link.download = ""; // You might want to give a default filename here
+                                document.body.appendChild(link); // Append the link to the document
                                 link.click();
+                                document.body.removeChild(link); // Clean up and remove the link
                                 handleNotification("Conversion Complete", "File has been successfully converted.");
                             } else {
                                 throw new Error(res.error || "Unknown error occurred during conversion.");
@@ -505,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function(){
                             handleNotification("Conversion Failed", e.message);
                         }
                     } else {
-                        let res = JSON.parse(this.response);
+                        let res = JSON.parse(conversionRequest.response);
                         self.error = res.error || "Unknown error occurred.";
                         self.loadingConversion = false;
                         self.pdfFile = null;
