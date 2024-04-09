@@ -455,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 this.pdfFile = event.target.files[0];
             },
             convertPDFtoDOCX: function() {
-                // Early exit if no file is selected
+                console.log("Attempting to convert PDF to DOCX...");
                 if (!this.pdfFile) {
                     this.error = "Please select a PDF file first.";
                     handleNotification("Conversion Failed", this.error); // Assuming you have a similar function for notifications
