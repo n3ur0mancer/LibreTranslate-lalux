@@ -455,36 +455,69 @@ document.addEventListener('DOMContentLoaded', function(){
                 this.pdfFile = event.target.files[0];
             },
             convertPDFtoDOCX: function() {
+                // Early exit if no file is selected
                 if (!this.pdfFile) {
                     this.error = "Please select a PDF file first.";
+                    handleNotification("Conversion Failed", this.error); // Assuming you have a similar function for notifications
                     return;
                 }
-                
+
+                let self = this;
+                let conversionRequest = new XMLHttpRequest();
+
+                conversionRequest.open("POST", `${this.BaseUrl}/convert_file`, true);
+
                 let formData = new FormData();
-                formData.append('file', this.pdfFile);
-                
-                // Additional configuration might be needed here if your backend expects an API key or token.
-                fetch(`${this.BaseUrl}/convert_file`, {
-                    method: 'POST',
-                    body: formData,
-                })
-                .then(response => {
-                    if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                formData.append("file", this.pdfFile);
+                // Add any other data your server might require
+                formData.append("api_key", localStorage.getItem("api_key") || "");
+                if (self.apiSecret) formData.append("secret", self.apiSecret); // If you have an additional security layer
+
+                this.loadingConversion = true; // Manage loading state for UI feedback
+
+                conversionRequest.onload = function() {
+                    if (conversionRequest.status === 200) {
+                        try {
+                            let res = JSON.parse(this.response);
+                            if (res.downloadUrl) {
+                                self.loadingConversion = false;
+                                self.pdfFile = null; // Optionally reset the selected file
+
+                                let link = document.createElement("a");
+                                link.href = res.downloadUrl;
+                                link.download = "";
+                                link.click();
+                                handleNotification("Conversion Complete", "File has been successfully converted.");
+                            } else {
+                                throw new Error(res.error || "Unknown error occurred during conversion.");
+                            }
+                        } catch (e) {
+                            self.error = e.message;
+                            self.loadingConversion = false;
+                            self.pdfFile = null;
+                            handleNotification("Conversion Failed", e.message);
+                        }
+                    } else {
+                        let res = JSON.parse(this.response);
+                        self.error = res.error || "Unknown error occurred.";
+                        self.loadingConversion = false;
+                        self.pdfFile = null;
+                        handleNotification("Conversion Failed", self.error);
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.downloadUrl) {
-                    // Optionally, you might want to reset the pdfFile to null here
-                    window.location.href = data.downloadUrl; // Directs the user to the download URL
-                    }
-                })
-                .catch(error => {
-                    console.error('Error during the conversion process:', error);
-                    this.error = "There was an error converting the file.";
-                });
-            }
+                };
+
+                conversionRequest.onerror = function() {
+                    const message = "Error while attempting to convert file.";
+                    self.error = message;
+                    self.loadingConversion = false;
+                    self.pdfFile = null;
+                    handleNotification("Conversion Failed", message);
+                };
+
+                conversionRequest.send(formData);
+                Notification.requestPermission(); // Request permission for notifications if you plan to use them
+            },
+
         }
     });
 });
