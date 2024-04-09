@@ -41,7 +41,10 @@ document.addEventListener('DOMContentLoaded', function(){
             filesTranslation: true,
             frontendTimeout: 500,
 
-            apiSecret: "{{ api_secret }}"
+            apiSecret: "{{ api_secret }}",
+
+            convertType: "",
+            pdfFile: null, // To store the uploaded file
         },
         mounted: function() {
             const self = this;
@@ -440,6 +443,47 @@ document.addEventListener('DOMContentLoaded', function(){
 
                 translateFileRequest.send(data);
                 Notification.requestPermission();
+            },
+            showPDFInput: function() {
+                this.convertType = 'convert';
+                let pdfInput = document.getElementById('pdfInput');
+                if(pdfInput) {
+                    pdfInput.click();
+                }
+            },        
+            handlePDFUpload: function(event) {
+                this.pdfFile = event.target.files[0];
+            },
+            convertPDFtoDOCX: function() {
+                if (!this.pdfFile) {
+                    this.error = "Please select a PDF file first.";
+                    return;
+                }
+                
+                let formData = new FormData();
+                formData.append('file', this.pdfFile);
+                
+                // Additional configuration might be needed here if your backend expects an API key or token.
+                fetch(`${this.BaseUrl}/convert_file`, {
+                    method: 'POST',
+                    body: formData,
+                })
+                .then(response => {
+                    if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.downloadUrl) {
+                    // Optionally, you might want to reset the pdfFile to null here
+                    window.location.href = data.downloadUrl; // Directs the user to the download URL
+                    }
+                })
+                .catch(error => {
+                    console.error('Error during the conversion process:', error);
+                    this.error = "There was an error converting the file.";
+                });
             }
         }
     });
