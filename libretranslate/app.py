@@ -308,15 +308,15 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                                and key_missing
-                                and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                            ):
+                            and key_missing
+                            and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                        ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                                and key_missing
-                                and not secret.secret_match(get_req_secret())
-                            ):
+                            and key_missing
+                            and not secret.secret_match(get_req_secret())
+                        ):
                         need_key = True
 
                     if need_key:
@@ -702,9 +702,9 @@ def create_app(args):
                         }
                     )
         except Exception as e:
-            # Log the error to console or a file. Adjust logging as per your setup
-            print(f"Error during file conversion: {e}")
-            abort(500, description=f"Error during file conversion: {str(e)}")
+            raise e
+            abort(500, description=_(
+                "Cannot translate text: %(text)s", text=str(e)))
 
     @bp.post("/convert_file")
     @access_check
@@ -769,13 +769,15 @@ def create_app(args):
             cv.close()
 
             # Generate a URL for downloading the DOCX file
-            translated_file_url = url_for(
+            converted_file_url = url_for(
                 'Main app.download_file', filename=output_filename, _external=True)
 
-            return jsonify({'translatedFileUrl': translated_file_url})
+            return jsonify({'downloadUrl': converted_file_url})
 
         except Exception as e:
-            abort(500, description="Error during file conversion: " + str(e))
+            # Log the error to console or a file. Adjust logging as per your setup
+            print(f"Error during file conversion: {e}")
+            abort(500, description=f"Error during file conversion: {str(e)}")
 
         finally:
             # Optionally, clean up the uploaded PDF to avoid storage fill-up
