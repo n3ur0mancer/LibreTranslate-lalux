@@ -6,10 +6,7 @@
     {% for al in alternate_locales %}
     <link rel="alternate" hreflang="{{ al.lang }}" href="{{ al.link }}" />
     {% endfor %} {% if web_version %}
-    <title>
-      LALUX Translate - {{ _h("Free and Open Source Machine Translation API") }}
-      🌐
-    </title>
+    <title>LALUX Translate</title>
     <meta
       name="description"
       content="{{ _h('Free and Open Source Machine Translation API. Self-hosted, offline capable and easy to setup. Run your own API server in just a few minutes.') }}"
@@ -65,10 +62,7 @@
       as="style"
     />
 
-    <meta
-      property="og:title"
-      content="LibreTranslate - {{ _h('Free and Open Source Machine Translation API') }}"
-    />
+    <meta property="og:title" content="LALUX Translate" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://libretranslate.com" />
     <meta
