@@ -450,21 +450,24 @@ document.addEventListener('DOMContentLoaded', function(){
                 if(pdfInput) {
                     pdfInput.click();
                 }
-            },        
+            },
+
+            
+            // trigger the file upload method when pdf is selected
             handlePDFUpload: function(event) {
                 this.pdfFile = event.target.files[0];
                 if (this.pdfFile) {
-                    this.convertPDFtoDOCX(); // Automatically trigger conversion
+                    this.convertPDFtoDOCX();
                 } else {
-                    // Handle case where file selection was cancelled or failed
                     this.error = "No file selected or an error occurred.";
-                    handleNotification("File Selection Failed", this.error);
+                    handleNotification("File Selection Failed:", this.error);
                 }
             },
+            // post the pdf to server and get the download url of the docx
             convertPDFtoDOCX: function() {
                 if (!this.pdfFile) {
                     this.error = "Please select a PDF file first.";
-                    handleNotification("Conversion Failed", this.error); // Assuming you have a similar function for notifications
+                    handleNotification("Conversion Failed:", this.error);
                     return;
                 }
 
@@ -475,11 +478,10 @@ document.addEventListener('DOMContentLoaded', function(){
 
                 let formData = new FormData();
                 formData.append("file", this.pdfFile);
-                // Add any other data your server might require
                 formData.append("api_key", localStorage.getItem("api_key") || "");
-                if (self.apiSecret) formData.append("secret", self.apiSecret); // If you have an additional security layer
+                if (self.apiSecret) formData.append("secret", self.apiSecret);
 
-                this.loadingConversion = true; // Manage loading state for UI feedback
+                this.loadingConversion = true; // Manage loading state for UI feedback, maybe use this to give user feedback
 
                 conversionRequest.onload = function() {
                     if (conversionRequest.readyState === 4 && conversionRequest.status === 200) {
@@ -487,11 +489,11 @@ document.addEventListener('DOMContentLoaded', function(){
                             let res = JSON.parse(conversionRequest.response);
                             if (res.downloadUrl) {
                                 self.loadingConversion = false;
-                                self.pdfFile = null; // Optionally reset the selected file
+                                self.pdfFile = null;
 
                                 let link = document.createElement("a");
                                 link.href = res.downloadUrl;
-                                link.download = ""; // You might want to give a default filename here
+                                link.download = "converted"; // You might want to give a default filename here
                                 document.body.appendChild(link); // Append the link to the document
                                 link.click();
                                 document.body.removeChild(link); // Clean up and remove the link
@@ -503,14 +505,14 @@ document.addEventListener('DOMContentLoaded', function(){
                             self.error = e.message;
                             self.loadingConversion = false;
                             self.pdfFile = null;
-                            handleNotification("Conversion Failed", e.message);
+                            handleNotification("Conversion Failed:", e.message);
                         }
                     } else {
                         let res = JSON.parse(conversionRequest.response);
                         self.error = res.error || "Unknown error occurred.";
                         self.loadingConversion = false;
                         self.pdfFile = null;
-                        handleNotification("Conversion Failed", self.error);
+                        handleNotification("Conversion Failed:", self.error);
                     }
                 };
 
@@ -523,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 };
 
                 conversionRequest.send(formData);
-                Notification.requestPermission(); // Request permission for notifications if you plan to use them
+                Notification.requestPermission();
             },
 
         }
