@@ -755,7 +755,6 @@ def create_app(args):
 
         # Extract the base name of the uploaded file without its extension
         base_filename = os.path.splitext(secure_filename(file.filename))[0]
-        # Ensure the base filename is not empty; revert to uuid if it is
         if not base_filename:
             base_filename = str(uuid.uuid4())
 
@@ -782,12 +781,10 @@ def create_app(args):
             return jsonify({'downloadUrl': converted_file_url})
 
         except Exception as e:
-            # Log the error to console or a file. Adjust logging as per your setup
             print(f"Error during file conversion: {e}")
             abort(500, description=f"Error during file conversion: {str(e)}")
 
         finally:
-            # Optionally, clean up the uploaded PDF to avoid storage fill-up
             if os.path.exists(upload_filepath):
                 os.remove(upload_filepath)
 
