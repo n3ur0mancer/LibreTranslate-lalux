@@ -453,6 +453,13 @@ document.addEventListener('DOMContentLoaded', function(){
             },        
             handlePDFUpload: function(event) {
                 this.pdfFile = event.target.files[0];
+                if (this.pdfFile) {
+                    this.convertPDFtoDOCX(); // Automatically trigger conversion
+                } else {
+                    // Handle case where file selection was cancelled or failed
+                    this.error = "No file selected or an error occurred.";
+                    handleNotification("File Selection Failed", this.error);
+                }
             },
             convertPDFtoDOCX: function() {
                 console.log("Attempting to convert PDF to DOCX...");
