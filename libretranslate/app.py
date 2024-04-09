@@ -308,14 +308,14 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                        and key_missing
-                        and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                            and key_missing
+                            and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
                         ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                        and key_missing
-                        and not secret.secret_match(get_req_secret())
+                            and key_missing
+                            and not secret.secret_match(get_req_secret())
                         ):
                         need_key = True
 
@@ -750,34 +750,37 @@ def create_app(args):
         if not file or file.filename == '':
             abort(400, description="No file provided or file name is empty.")
 
-        # Assuming you have validation for file extension
-        pdf_filename = secure_filename(file.filename)
-        pdf_filepath = os.path.join(get_upload_dir(), pdf_filename)
-        file.save(pdf_filepath)
+        if not file.filename.lower().endswith('.pdf'):
+            abort(400, description="Invalid file format. Only PDF files are supported.")
 
-        # Prepare output file path
+        # Generate unique filenames for the uploaded and converted files
+        upload_filename = secure_filename(file.filename)
+        upload_filepath = os.path.join(get_upload_dir(), upload_filename)
         output_filename = str(uuid.uuid4()) + '.docx'
         output_filepath = os.path.join(get_upload_dir(), output_filename)
 
-        # Convert the PDF to DOCX
         try:
-            cv = Converter(pdf_filepath)
-            cv.convert(output_filepath)  # Convert all pages by default
+            # Save the uploaded PDF file
+            file.save(upload_filepath)
+
+            # Convert the PDF to DOCX
+            cv = Converter(upload_filepath)
+            cv.convert(output_filepath, start=0, end=None)
             cv.close()
 
-            # After conversion, generate a URL for downloading the DOCX file
-            download_url = url_for(
-                'download_file', filename=output_filename, _external=True)
-            return jsonify({'downloadUrl': download_url})
+            # Generate a URL for downloading the DOCX file
+            translated_file_url = url_for(
+                'Main app.download_file', filename=output_filename, _external=True)
+
+            return jsonify({'translatedFileUrl': translated_file_url})
 
         except Exception as e:
-            abort(500, description=str(e))
+            abort(500, description="Error during file conversion: " + str(e))
+
         finally:
-            # Clean up the uploaded and converted files to avoid filling up the server storage
-            if os.path.exists(pdf_filepath):
-                os.remove(pdf_filepath)
-            if os.path.exists(output_filepath):
-                os.remove(output_filepath)
+            # Optionally, clean up the uploaded PDF to avoid storage fill-up
+            if os.path.exists(upload_filepath):
+                os.remove(upload_filepath)
 
     @bp.post("/translate_file")
     @access_check
