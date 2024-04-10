@@ -233,15 +233,6 @@
                 <button
                   type="button"
                   class="btn btn-switch-type"
-                  @click="switchType('files')"
-                  :class="{'active': translationType === 'files'}"
-                >
-                  <i aria-hidden="true" class="material-icons">description</i>
-                  <span class="btn-text">{{ _h("Translate Files") }}</span>
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-switch-type"
                   @click="showPDFInput"
                   :class="{'active': translationType === 'convert'}"
                 >
@@ -271,8 +262,15 @@
                   style="display: none"
                   @change="handlePDFUpload"
                 />
-
-
+                <button
+                  type="button"
+                  class="btn btn-switch-type"
+                  @click="switchType('files')"
+                  :class="{'active': translationType === 'files'}"
+                >
+                  <i aria-hidden="true" class="material-icons">description</i>
+                  <span class="btn-text">{{ _h("Other formats") }}</span>
+                </button>
               </div>
               <form id="translation-form" class="col s12">
                 <div class="row mb-0">
