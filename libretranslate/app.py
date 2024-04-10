@@ -308,15 +308,15 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                        and key_missing
-                        and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                        ):
+                                and key_missing
+                                and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                            ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                        and key_missing
-                        and not secret.secret_match(get_req_secret())
-                        ):
+                                and key_missing
+                                and not secret.secret_match(get_req_secret())
+                            ):
                         need_key = True
 
                     if need_key:
@@ -709,33 +709,93 @@ def create_app(args):
     @bp.post("/convert_file")
     @access_check
     def convert_file():
+        """
+        Convert a PDF file to a DOCX file and provide a download URL.
+        ---
+        tags:
+          - convert
+        consumes:
+          - multipart/form-data
+        parameters:
+          - in: formData
+            name: file
+            type: file
+            required: true
+            description: PDF file to convert
+          - in: formData
+            name: api_key
+            schema:
+              type: string
+              example: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+            required: false
+            description: API key for access control
+        responses:
+          200:
+            description: URL to download the converted DOCX file
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    downloadUrl:
+                      type: string
+                      description: URL to download the converted DOCX file
+          400:
+            description: Invalid request
+          500:
+            description: Conversion error
+        """
+
         file = request.files.get('file')
+
         if not file or file.filename == '':
             abort(400, description="No file provided or file name is empty.")
 
         if not file.filename.lower().endswith('.pdf'):
             abort(400, description="Invalid file format. Only PDF files are supported.")
 
-        # Generate a secure filename and ensure it has the '.pdf' extension
+        # Secure the filename to prevent directory traversal vulnerabilities
         secure_original_filename = secure_filename(file.filename)
-        if not secure_original_filename.lower().endswith('.pdf'):
-            secure_original_filename += '.pdf'
+        print(f"Secured original file name: {secure_original_filename}")
 
-        upload_filepath = os.path.join(
-            get_upload_dir(), secure_original_filename)
-        output_filename = secure_original_filename.rsplit('.', 1)[0] + '.docx'
+        # Extract the base name of the uploaded file without its extension
+        base_filename, file_extension = os.path.splitext(
+            secure_original_filename)
+        print(f"Base file name: {base_filename}")
+
+        # In case the file does not have a proper name before the extension
+        if not base_filename:
+            base_filename = str(uuid.uuid4())
+
+        # Sanitize base_filename to replace spaces with underscores
+        sanitized_base_filename = base_filename.replace(" ", "_")
+        print(f"Sanetized file name: {sanitized_base_filename}")
+
+        # Now create the full path for the uploaded PDF and the output DOCX
+        upload_filename = f"{sanitized_base_filename}.pdf"
+        upload_filepath = os.path.join(get_upload_dir(), upload_filename)
+        output_filename = f"{sanitized_base_filename}.docx"
         output_filepath = os.path.join(get_upload_dir(), output_filename)
 
         try:
+            # Save the uploaded PDF file
             file.save(upload_filepath)
+
+            # Convert the PDF to DOCX
             cv = Converter(upload_filepath)
             cv.convert(output_filepath, start=0, end=None)
             cv.close()
 
-            return jsonify({'downloadUrl': url_for('Main app.download_file', filename=output_filename, _external=True)})
+            # Generate a URL for downloading the DOCX file
+            converted_file_url = url_for(
+                'Main app.download_file', filename=output_filename, _external=True)
+
+            return jsonify({'downloadUrl': converted_file_url})
+
         except Exception as e:
             print(f"Error during file conversion: {e}")
             abort(500, description=f"Error during file conversion: {str(e)}")
+
         finally:
             if os.path.exists(upload_filepath):
                 os.remove(upload_filepath)
