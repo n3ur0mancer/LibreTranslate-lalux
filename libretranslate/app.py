@@ -706,6 +706,9 @@ def create_app(args):
             abort(500, description=_(
                 "Cannot translate text: %(text)s", text=str(e)))
 
+
+
+
     @bp.post("/convert_file")
     @access_check
     def convert_file():
@@ -759,10 +762,14 @@ def create_app(args):
           500:
             description: Conversion or translation error
         """
-        file = request.files.get('file')
+        if args.disable_files_translation:
+            abort(403, description=_(
+                "Files translation are disabled on this server."))
+
         source_lang = request.form.get("source")
         target_lang = request.form.get("target")
-
+        file = request.files.get('file')
+        
         if not file or file.filename == '':
             abort(400, description="No file provided or file name is empty.")
 
@@ -771,6 +778,18 @@ def create_app(args):
 
         if not source_lang or not target_lang:
             abort(400, description="Source and target language must be specified.")
+        
+        src_lang = next(
+            iter([l for l in languages if l.code == source_lang]), None)
+
+        if src_lang is None:
+            abort(400, description=_("%(lang)s is not supported", lang=source_lang))
+
+        tgt_lang = next(
+            iter([l for l in languages if l.code == target_lang]), None)
+
+        if tgt_lang is None:
+            abort(400, description=_("%(lang)s is not supported", lang=target_lang))
 
         # Convert the PDF to DOCX
         secure_original_filename = secure_filename(file.filename)
@@ -789,20 +808,22 @@ def create_app(args):
             cv.convert(output_filepath, start=0, end=None)
             cv.close()
 
+            # Retrieve the translation model or configuration
+            translation_model = src_lang.get_translation(tgt_lang) 
+
             # Translate the DOCX file
             translated_file_path = argostranslatefiles.translate_file(
-                output_filepath, source_lang, target_lang)
+                src_lang.get_translation(tgt_lang), output_filepath)
 
             translated_filename = os.path.basename(translated_file_path)
-            translated_file_url = url_for(
-                'Main app.download_file', filename=translated_filename, _external=True)
-
+            
+            translated_file_url = url_for('Main app.download_file', filename=translated_filename, _external=True)
+            
             return jsonify({'downloadUrl': translated_file_url})
-
+        
         except Exception as e:
             print(f"Error during file conversion or translation: {e}")
-            abort(
-                500, description=f"Error during file conversion or translation: {str(e)}")
+            abort(500, description=f"Error during file conversion or translation: {str(e)}")
 
         finally:
             # Clean up the uploaded and converted files if they exist
@@ -810,6 +831,8 @@ def create_app(args):
                 os.remove(upload_filepath)
             if os.path.exists(output_filepath):
                 os.remove(output_filepath)
+
+
 
     @bp.post("/translate_file")
     @access_check
@@ -938,11 +961,6 @@ def create_app(args):
 
             file.save(filepath)
 
-            # Not an exact science: take the number of bytes and divide by
-            # the character limit. Assuming a plain text file, this will
-            # set the cost of the request to N = bytes / char_limit, which is
-            # roughly equivalent to a batch process of N batches assuming
-            # each batch uses all available limits
             if char_limit > 0:
                 request.req_cost = max(
                     1, int(os.path.getsize(filepath) / char_limit))
