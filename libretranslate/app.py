@@ -308,15 +308,15 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                            and key_missing
-                            and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                        ):
+                                and key_missing
+                                and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                            ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                            and key_missing
-                            and not secret.secret_match(get_req_secret())
-                        ):
+                                and key_missing
+                                and not secret.secret_match(get_req_secret())
+                            ):
                         need_key = True
 
                     if need_key:
@@ -753,16 +753,23 @@ def create_app(args):
         if not file.filename.lower().endswith('.pdf'):
             abort(400, description="Invalid file format. Only PDF files are supported.")
 
+        # Secure the filename to prevent directory traversal vulnerabilities
+        secure_original_filename = secure_filename(file.filename)
         # Extract the base name of the uploaded file without its extension
-        base_filename = os.path.splitext(secure_filename(file.filename))[0]
+        base_filename, file_extension = os.path.splitext(
+            secure_original_filename)
+
+        # In case the file does not have a proper name before the extension
         if not base_filename:
             base_filename = str(uuid.uuid4())
 
+        # Sanitize base_filename to replace spaces with underscores
+        sanitized_base_filename = base_filename.replace(" ", "_")
+
         # Now create the full path for the uploaded PDF and the output DOCX
-        # Replace any spaces with underscores or any other character suitable for filenames
-        upload_filename = f"{base_filename}.pdf".replace(" ", "_")
+        upload_filename = f"{sanitized_base_filename}.pdf"
         upload_filepath = os.path.join(get_upload_dir(), upload_filename)
-        output_filename = f"{base_filename}.docx".replace(" ", "_")
+        output_filename = f"{sanitized_base_filename}.docx"
         output_filepath = os.path.join(get_upload_dir(), output_filename)
 
         try:
