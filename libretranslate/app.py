@@ -308,15 +308,15 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                        and key_missing
-                        and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                        ):
+                            and key_missing
+                            and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                            ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                        and key_missing
-                        and not secret.secret_match(get_req_secret())
-                        ):
+                            and key_missing
+                            and not secret.secret_match(get_req_secret())
+                            ):
                         need_key = True
 
                     if need_key:
@@ -710,7 +710,7 @@ def create_app(args):
     @access_check
     def convert_file():
         """
-        Convert a PDF file to a DOCX file and provide a download URL.
+        Convert a PDF file to a DOCX file, translate it, and provide a download URL.
         ---
         tags:
           - convert
@@ -723,6 +723,20 @@ def create_app(args):
             required: true
             description: PDF file to convert
           - in: formData
+            name: source
+            schema:
+              type: string
+              example: en
+            required: true
+            description: Source language code
+          - in: formData
+            name: target
+            schema:
+              type: string
+              example: es
+            required: true
+            description: Target language code
+          - in: formData
             name: api_key
             schema:
               type: string
@@ -731,7 +745,7 @@ def create_app(args):
             description: API key for access control
         responses:
           200:
-            description: URL to download the converted DOCX file
+            description: URL to download the translated DOCX file
             content:
               application/json:
                 schema:
@@ -739,14 +753,15 @@ def create_app(args):
                   properties:
                     downloadUrl:
                       type: string
-                      description: URL to download the converted DOCX file
+                      description: URL to download the translated DOCX file
           400:
             description: Invalid request
           500:
-            description: Conversion error
+            description: Conversion or translation error
         """
-
         file = request.files.get('file')
+        source_lang = request.form.get("source")
+        target_lang = request.form.get("target")
 
         if not file or file.filename == '':
             abort(400, description="No file provided or file name is empty.")
@@ -754,30 +769,16 @@ def create_app(args):
         if not file.filename.lower().endswith('.pdf'):
             abort(400, description="Invalid file format. Only PDF files are supported.")
 
-        # Secure the filename to prevent directory traversal vulnerabilities
+        if not source_lang or not target_lang:
+            abort(400, description="Source and target language must be specified.")
+
+        # Convert the PDF to DOCX
         secure_original_filename = secure_filename(file.filename)
-        # print(f"Secured original file name: {secure_original_filename}")
-
-        # Extract the base name of the uploaded file without its extension
-        base_filename, file_extension = os.path.splitext(
-            secure_original_filename)
-        # print(f"Base file name: {base_filename}")
-
-        # In case the file does not have a proper name before the extension
-        if not base_filename:
-            base_filename = str(uuid.uuid4())
-
-        # Sanitize base_filename to replace spaces with underscores
-        sanitized_base_filename = base_filename.replace(" ", "_")
-        # print(f"Sanetized file name: {sanitized_base_filename}")
-
-        # Now create the full path for the uploaded PDF and the output DOCX
-        upload_filename = f"{sanitized_base_filename}.pdf"
+        base_filename, _ = os.path.splitext(secure_original_filename)
+        upload_filename = f"{base_filename}.pdf"
         upload_filepath = os.path.join(get_upload_dir(), upload_filename)
-        output_filename = f"{str(uuid.uuid4())}.{sanitized_base_filename}.docx"
+        output_filename = f"{str(uuid.uuid4())}.{base_filename}.docx"
         output_filepath = os.path.join(get_upload_dir(), output_filename)
-        print(f"Output file name: {output_filename}")
-        print(f"Output file path: {output_filepath}")
 
         try:
             # Save the uploaded PDF file
@@ -788,19 +789,27 @@ def create_app(args):
             cv.convert(output_filepath, start=0, end=None)
             cv.close()
 
-            # Generate a URL for downloading the DOCX file
-            converted_file_url = url_for(
-                'Main app.download_file', filename=output_filename, _external=True)
+            # Translate the DOCX file
+            translated_file_path = argostranslatefiles.translate_file(
+                output_filepath, source_lang, target_lang)
 
-            return jsonify({'downloadUrl': converted_file_url})
+            translated_filename = os.path.basename(translated_file_path)
+            translated_file_url = url_for(
+                'Main app.download_file', filename=translated_filename, _external=True)
+
+            return jsonify({'downloadUrl': translated_file_url})
 
         except Exception as e:
-            print(f"Error during file conversion: {e}")
-            abort(500, description=f"Error during file conversion: {str(e)}")
+            print(f"Error during file conversion or translation: {e}")
+            abort(
+                500, description=f"Error during file conversion or translation: {str(e)}")
 
         finally:
+            # Clean up the uploaded and converted files if they exist
             if os.path.exists(upload_filepath):
                 os.remove(upload_filepath)
+            if os.path.exists(output_filepath):
+                os.remove(output_filepath)
 
     @bp.post("/translate_file")
     @access_check
