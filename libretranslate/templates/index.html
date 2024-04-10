@@ -255,9 +255,22 @@
                   style="display: none"
                   @change="handlePDFUpload"
                 />
-
-
-                
+                <button
+                  type="button"
+                  class="btn btn-switch-type"
+                  @click="showPDFInput"
+                  :class="{'active': translationType === 'translatePDF'}"
+                >
+                  <i aria-hidden="true" class="material-icons">picture_as_pdf</i>
+                  <span class="btn-text">{{ _h("Transalte PDF") }}</span>
+                </button>
+                <input
+                  type="file"
+                  id="pdfInput"
+                  accept="application/pdf"
+                  style="display: none"
+                  @change="handlePDFUpload"
+                />
 
 
               </div>
