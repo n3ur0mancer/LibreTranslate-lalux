@@ -774,7 +774,7 @@ def create_app(args):
         # Now create the full path for the uploaded PDF and the output DOCX
         upload_filename = f"{sanitized_base_filename}.pdf"
         upload_filepath = os.path.join(get_upload_dir(), upload_filename)
-        output_filename = f"{sanitized_base_filename}.docx"
+        output_filename = f"{str(uuid.uuid4())}.{sanitized_base_filename}.docx"
         output_filepath = os.path.join(get_upload_dir(), output_filename)
         print(f"Output file name: {output_filename}")
         print(f"Output file path: {output_filepath}")
