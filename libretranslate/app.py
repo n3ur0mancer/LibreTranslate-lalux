@@ -746,7 +746,7 @@ def create_app(args):
             description: Conversion error
         """
 
-        file = request.files.get('file')
+        file = request.files['file']
         if not file or file.filename == '':
             abort(400, description="No file provided or file name is empty.")
 
