@@ -308,15 +308,15 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                                and key_missing
-                                and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                            ):
+                        and key_missing
+                        and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                        ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                                and key_missing
-                                and not secret.secret_match(get_req_secret())
-                            ):
+                        and key_missing
+                        and not secret.secret_match(get_req_secret())
+                        ):
                         need_key = True
 
                     if need_key:
@@ -756,12 +756,12 @@ def create_app(args):
 
         # Secure the filename to prevent directory traversal vulnerabilities
         secure_original_filename = secure_filename(file.filename)
-        print(f"Secured original file name: {secure_original_filename}")
+        # print(f"Secured original file name: {secure_original_filename}")
 
         # Extract the base name of the uploaded file without its extension
         base_filename, file_extension = os.path.splitext(
             secure_original_filename)
-        print(f"Base file name: {base_filename}")
+        # print(f"Base file name: {base_filename}")
 
         # In case the file does not have a proper name before the extension
         if not base_filename:
@@ -769,13 +769,15 @@ def create_app(args):
 
         # Sanitize base_filename to replace spaces with underscores
         sanitized_base_filename = base_filename.replace(" ", "_")
-        print(f"Sanetized file name: {sanitized_base_filename}")
+        # print(f"Sanetized file name: {sanitized_base_filename}")
 
         # Now create the full path for the uploaded PDF and the output DOCX
         upload_filename = f"{sanitized_base_filename}.pdf"
         upload_filepath = os.path.join(get_upload_dir(), upload_filename)
         output_filename = f"{sanitized_base_filename}.docx"
         output_filepath = os.path.join(get_upload_dir(), output_filename)
+        print(f"Output file name: {output_filename}")
+        print(f"Output file path: {output_filepath}")
 
         try:
             # Save the uploaded PDF file
