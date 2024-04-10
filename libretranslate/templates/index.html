@@ -243,10 +243,10 @@
                   type="button"
                   class="btn btn-switch-type"
                   @click="showPDFInput"
-                  :class="{'active': convertType === 'convert'}"
+                  :class="{'active': translationType === 'convert'}"
                 >
                   <i aria-hidden="true" class="material-icons">autorenew</i>
-                  <span class="btn-text">{{ _h("Convert PDF") }}</span>
+                  <span class="btn-text">{{ _h("PDF to WORD") }}</span>
                 </button>
                 <input
                   type="file"
@@ -255,6 +255,27 @@
                   style="display: none"
                   @change="handlePDFUpload"
                 />
+
+
+                <!-- Update translate pdf button --> 
+                <button
+                  type="button"
+                  class="btn btn-switch-type"
+                  @click="showPDFInput" 
+                  :class="{'active': translationType === 'translatePDF'}"
+                >
+                  <i aria-hidden="true" class="material-icons">autorenew</i>
+                  <span class="btn-text">{{ _h("Translate PDF") }}</span>
+                </button>
+                <input
+                  type="file"
+                  id="pdfTranslateInput"
+                  accept="application/pdf"
+                  style="display: none"
+                  @change="handlePDFTranslateUpload" 
+                />
+
+
               </div>
               <form id="translation-form" class="col s12">
                 <div class="row mb-0">
