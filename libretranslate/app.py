@@ -9,6 +9,7 @@ from functools import wraps
 from html import unescape
 from timeit import default_timer
 from pdf2docx import Converter
+from docx import Document
 
 import argostranslatefiles
 from argostranslatefiles import get_supported_formats
@@ -120,6 +121,20 @@ def get_char_limit(default_limit, api_keys_db):
                     char_limit = api_key_limits[1]
 
     return char_limit
+
+
+def clean_docx_line_breaks(docx_path):
+    doc = Document(docx_path)
+    cleaned_doc = Document()
+    for para in doc.paragraphs:
+        # Simple example of cleaning: replace newlines within a paragraph
+        # Customize this logic as needed
+        cleaned_text = para.text.replace('\n', ' ')
+        cleaned_doc.add_paragraph(cleaned_text)
+
+    cleaned_doc_path = docx_path.replace('.docx', '_cleaned.docx')
+    cleaned_doc.save(cleaned_doc_path)
+    return cleaned_doc_path
 
 
 def get_routes_limits(args, api_keys_db):
@@ -308,15 +323,15 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                            and key_missing
-                            and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                            ):
+                        and key_missing
+                        and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                        ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                            and key_missing
-                            and not secret.secret_match(get_req_secret())
-                            ):
+                        and key_missing
+                        and not secret.secret_match(get_req_secret())
+                        ):
                         need_key = True
 
                     if need_key:
@@ -706,9 +721,6 @@ def create_app(args):
             abort(500, description=_(
                 "Cannot translate text: %(text)s", text=str(e)))
 
-
-
-
     @bp.post("/convert_file")
     @access_check
     def convert_file():
@@ -769,7 +781,7 @@ def create_app(args):
         source_lang = request.form.get("source")
         target_lang = request.form.get("target")
         file = request.files.get('file')
-        
+
         if not file or file.filename == '':
             abort(400, description="No file provided or file name is empty.")
 
@@ -778,7 +790,7 @@ def create_app(args):
 
         if not source_lang or not target_lang:
             abort(400, description="Source and target language must be specified.")
-        
+
         src_lang = next(
             iter([l for l in languages if l.code == source_lang]), None)
 
@@ -808,22 +820,24 @@ def create_app(args):
             cv.convert(output_filepath, start=0, end=None)
             cv.close()
 
-            # Retrieve the translation model or configuration
-            translation_model = src_lang.get_translation(tgt_lang) 
+            # Clean the DOCX file to remove unnecessary line breaks
+            cleaned_docx_path = clean_docx_line_breaks(output_filepath)
 
-            # Translate the DOCX file
+            # Now proceed to use cleaned_docx_path for the translation
             translated_file_path = argostranslatefiles.translate_file(
-                src_lang.get_translation(tgt_lang), output_filepath)
+                translation_model, cleaned_docx_path)
 
             translated_filename = os.path.basename(translated_file_path)
-            
-            translated_file_url = url_for('Main app.download_file', filename=translated_filename, _external=True)
-            
+
+            translated_file_url = url_for(
+                'Main app.download_file', filename=translated_filename, _external=True)
+
             return jsonify({'downloadUrl': translated_file_url})
-        
+
         except Exception as e:
             print(f"Error during file conversion or translation: {e}")
-            abort(500, description=f"Error during file conversion or translation: {str(e)}")
+            abort(
+                500, description=f"Error during file conversion or translation: {str(e)}")
 
         finally:
             # Clean up the uploaded and converted files if they exist
@@ -831,8 +845,6 @@ def create_app(args):
                 os.remove(upload_filepath)
             if os.path.exists(output_filepath):
                 os.remove(output_filepath)
-
-
 
     @bp.post("/translate_file")
     @access_check
