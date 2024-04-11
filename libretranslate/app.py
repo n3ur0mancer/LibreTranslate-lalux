@@ -10,6 +10,7 @@ from html import unescape
 from timeit import default_timer
 from pdf2docx import Converter
 from docx import Document
+import re
 
 import argostranslatefiles
 from argostranslatefiles import get_supported_formats
@@ -124,12 +125,18 @@ def get_char_limit(default_limit, api_keys_db):
 
 
 def clean_docx_line_breaks(docx_path):
+    # Regular expression pattern to match line breaks not following a sentence end.
+    # This pattern looks for occurrences of a newline character that are not
+    # directly preceded by a period, exclamation mark, or question mark.
+    pattern = r'(?<=[^.!?])\n'
+
     doc = Document(docx_path)
     cleaned_doc = Document()
     for para in doc.paragraphs:
-        # Simple example of cleaning: replace newlines within a paragraph
-        # Customize this logic as needed
-        cleaned_text = para.text.replace('\n', ' ')
+        # Using re.sub with a lambda function to replace matching patterns (line breaks) with a space.
+        # The lambda function is somewhat redundant here since the replacement is straightforward,
+        # but it's included to meet the requirement.
+        cleaned_text = re.sub(pattern, lambda match: ' ', para.text)
         cleaned_doc.add_paragraph(cleaned_text)
 
     cleaned_doc_path = docx_path.replace('.docx', '_cleaned.docx')
@@ -325,13 +332,13 @@ def create_app(args):
                     if (args.require_api_key_origin
                             and key_missing
                             and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                            ):
+                        ):
                         need_key = True
 
                     if (args.require_api_key_secret
                             and key_missing
                             and not secret.secret_match(get_req_secret())
-                            ):
+                        ):
                         need_key = True
 
                     if need_key:
