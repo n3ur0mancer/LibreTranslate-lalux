@@ -10,7 +10,7 @@ from html import unescape
 from timeit import default_timer
 from pdf2docx import Converter
 import re
-
+from docx import Document
 
 import argostranslatefiles
 from argostranslatefiles import get_supported_formats
