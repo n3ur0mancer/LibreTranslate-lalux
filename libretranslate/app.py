@@ -9,8 +9,10 @@ from functools import wraps
 from html import unescape
 from timeit import default_timer
 from pdf2docx import Converter
-from docx import Document
 import re
+import zipfile
+import xml.etree.ElementTree as ET
+
 
 import argostranslatefiles
 from argostranslatefiles import get_supported_formats
@@ -124,24 +126,56 @@ def get_char_limit(default_limit, api_keys_db):
     return char_limit
 
 
+def unzip_docx(docx_path, extract_to_dir):
+    with zipfile.ZipFile(docx_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to_dir)
+
+
+def repack_docx(dir_path, docx_path):
+    with zipfile.ZipFile(docx_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(dir_path):
+            for file in files:
+                if os.path.splitext(file)[1] != '':
+                    file_path = os.path.join(root, file)
+                    zipf.write(file_path, os.path.relpath(file_path, dir_path))
+
+
+def remove_line_breaks_in_xml(xml_path, pattern):
+    namespaces = {
+        'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+    ET.register_namespace('', namespaces['w'])
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+
+    for text in root.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'):
+        if text.text:
+            text.text = re.sub(pattern, lambda match: ' ', text.text)
+
+    tree.write(xml_path)
+
+
 def clean_docx_line_breaks(docx_path):
-    # Regular expression pattern to match line breaks not following a sentence end.
-    # This pattern looks for occurrences of a newline character that are not
-    # directly preceded by a period, exclamation mark, or question mark.
+    # Define the temporary directory for extracting the .docx contents
+    extract_to_dir = 'unzipped_docx'
+    # Define the path for the modified .docx file
+    modified_docx_path = docx_path.replace('.docx', '_cleaned.docx')
+    # Regular expression pattern to match line breaks not following a sentence end
     pattern = r'(?<=[^.!?])\n'
 
-    doc = Document(docx_path)
-    cleaned_doc = Document()
-    for para in doc.paragraphs:
-        # Using re.sub with a lambda function to replace matching patterns (line breaks) with a space.
-        # The lambda function is somewhat redundant here since the replacement is straightforward,
-        # but it's included to meet the requirement.
-        cleaned_text = re.sub(pattern, lambda match: ' ', para.text)
-        cleaned_doc.add_paragraph(cleaned_text)
+    # Unzip the .docx file
+    unzip_docx(docx_path, extract_to_dir)
 
-    cleaned_doc_path = docx_path.replace('.docx', '_cleaned.docx')
-    cleaned_doc.save(cleaned_doc_path)
-    return cleaned_doc_path
+    # Modify the XML
+    document_xml_path = os.path.join(extract_to_dir, 'word', 'document.xml')
+    remove_line_breaks_in_xml(document_xml_path, pattern)
+
+    # Repack the .docx file
+    repack_docx(extract_to_dir, modified_docx_path)
+
+    # Clean up the extracted directory if needed
+    # os.removedirs(extract_to_dir) - Use with caution, ensure correct path
+
+    return modified_docx_path
 
 
 def get_routes_limits(args, api_keys_db):
@@ -330,15 +364,15 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                            and key_missing
-                            and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                        ):
+                                and key_missing
+                                and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                            ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                            and key_missing
-                            and not secret.secret_match(get_req_secret())
-                        ):
+                                and key_missing
+                                and not secret.secret_match(get_req_secret())
+                            ):
                         need_key = True
 
                     if need_key:
