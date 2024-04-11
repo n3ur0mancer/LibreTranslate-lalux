@@ -323,15 +323,15 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                        and key_missing
-                        and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                        ):
+                            and key_missing
+                            and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                            ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                        and key_missing
-                        and not secret.secret_match(get_req_secret())
-                        ):
+                            and key_missing
+                            and not secret.secret_match(get_req_secret())
+                            ):
                         need_key = True
 
                     if need_key:
@@ -824,6 +824,7 @@ def create_app(args):
             cleaned_docx_path = clean_docx_line_breaks(output_filepath)
 
             # Now proceed to use cleaned_docx_path for the translation
+            translation_model = src_lang.get_translation(tgt_lang)
             translated_file_path = argostranslatefiles.translate_file(
                 translation_model, cleaned_docx_path)
 
