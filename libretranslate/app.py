@@ -127,19 +127,22 @@ def get_char_limit(default_limit, api_keys_db):
 def clean_docx_line_breaks(docx_path):
     # Load the .docx file
     doc = Document(docx_path)
+
     # Define the regular expression pattern to identify unwanted line breaks
     # This regex matches line breaks that are not preceded by common sentence-ending punctuation
     pattern = re.compile(r'(?<=[^.!?])\n')
 
     # Iterate through each paragraph in the document
     for para in doc.paragraphs:
-        # Replace unwanted line breaks with a space
-        cleaned_text = re.sub(pattern, ' ', para.text)
-        # Update the paragraph text with the cleaned text
-        if para.text != cleaned_text:
-            para.clear()  # Clear the existing text (and formatting)
-            # Add the cleaned text back as a single run
-            para.add_run(cleaned_text)
+        # Check if the paragraph text needs cleaning
+        if '\n' in para.text:
+            # Replace unwanted line breaks with a space
+            cleaned_text = re.sub(pattern, ' ', para.text)
+            # Update the paragraph text with the cleaned text
+            if para.text != cleaned_text:
+                para.clear()  # Clear the existing text (and formatting)
+                # Add the cleaned text back as a single run
+                para.add_run(cleaned_text)
 
     # Save the cleaned document
     cleaned_doc_path = docx_path.replace('.docx', '_cleaned.docx')
@@ -334,14 +337,14 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                        and key_missing
-                        and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                            and key_missing
+                            and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
                         ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                        and key_missing
-                        and not secret.secret_match(get_req_secret())
+                            and key_missing
+                            and not secret.secret_match(get_req_secret())
                         ):
                         need_key = True
 
@@ -492,6 +495,14 @@ def create_app(args):
         response.headers.add("Access-Control-Max-Age", 60 * 60 * 24 * 20)
         return response
 
+    def clean_text(text):
+        # Define the regular expression pattern to identify unwanted line breaks
+        # This regex matches line breaks that are not preceded by common sentence-ending punctuation
+        pattern = re.compile(r'(?<=[^.!?])\n')
+        # Replace unwanted line breaks with a space
+        cleaned_text = re.sub(pattern, ' ', text)
+        return cleaned_text
+
     @bp.post("/translate")
     @access_check
     def translate():
@@ -535,8 +546,8 @@ def create_app(args):
             required: false
             description: >
               Format of source text:
-               * `text` - Plain text
-               * `html` - HTML markup
+              * `text` - Plain text
+              * `html` - HTML markup
           - in: formData
             name: api_key
             schema:
@@ -619,7 +630,7 @@ def create_app(args):
             # Normalize line endings to UNIX style (LF) only so we can consistently
             # enforce character limits.
             # https://www.rfc-editor.org/rfc/rfc2046#section-4.1.1
-            q = "\n".join(q.splitlines())
+            q = clean_text(q)
 
         char_limit = get_char_limit(args.char_limit, api_keys_db)
 
