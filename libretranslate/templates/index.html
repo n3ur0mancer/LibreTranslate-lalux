@@ -239,6 +239,9 @@
                   <i aria-hidden="true" class="material-icons">autorenew</i>
                   <span class="btn-text">{{ _h("Translate PDF") }}</span>
                 </button>
+                <div class="progress" v-if="loadingConversion">
+                  <div class="indeterminate"></div>
+                </div>
                 <input
                   type="file"
                   id="pdfInput"
@@ -444,7 +447,7 @@
                         class="btn"
                         >{{ _h("Download") }}</a
                       >
-                      <div class="progress" v-if="loadingFileTranslation || loadingConversion">
+                      <div class="progress" v-if="loadingFileTranslation">
                         <div class="indeterminate"></div>
                       </div>
                     </div>
