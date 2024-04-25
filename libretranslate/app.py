@@ -9,6 +9,8 @@ from functools import wraps
 from html import unescape
 from timeit import default_timer
 from pdf2docx import Converter
+import re
+from docx import Document
 
 import argostranslatefiles
 from argostranslatefiles import get_supported_formats
@@ -120,6 +122,30 @@ def get_char_limit(default_limit, api_keys_db):
                     char_limit = api_key_limits[1]
 
     return char_limit
+
+
+def clean_docx_line_breaks(docx_path):
+    # Load the .docx file
+    doc = Document(docx_path)
+    # Define the regular expression pattern to identify unwanted line breaks
+    # This regex matches line breaks that are not preceded by common sentence-ending punctuation
+    pattern = re.compile(r'(?<=[^.!?])\n')
+
+    # Iterate through each paragraph in the document
+    for para in doc.paragraphs:
+        # Replace unwanted line breaks with a space
+        cleaned_text = re.sub(pattern, ' ', para.text)
+        # Update the paragraph text with the cleaned text
+        if para.text != cleaned_text:
+            para.clear()  # Clear the existing text (and formatting)
+            # Add the cleaned text back as a single run
+            para.add_run(cleaned_text)
+
+    # Save the cleaned document
+    cleaned_doc_path = docx_path.replace('.docx', '_cleaned.docx')
+    doc.save(cleaned_doc_path)
+
+    return cleaned_doc_path
 
 
 def get_routes_limits(args, api_keys_db):
@@ -710,7 +736,7 @@ def create_app(args):
     @access_check
     def convert_file():
         """
-        Convert a PDF file to a DOCX file and provide a download URL.
+        Convert a PDF file to a DOCX file, translate it, and provide a download URL.
         ---
         tags:
           - convert
@@ -723,6 +749,20 @@ def create_app(args):
             required: true
             description: PDF file to convert
           - in: formData
+            name: source
+            schema:
+              type: string
+              example: en
+            required: true
+            description: Source language code
+          - in: formData
+            name: target
+            schema:
+              type: string
+              example: es
+            required: true
+            description: Target language code
+          - in: formData
             name: api_key
             schema:
               type: string
@@ -731,7 +771,7 @@ def create_app(args):
             description: API key for access control
         responses:
           200:
-            description: URL to download the converted DOCX file
+            description: URL to download the translated DOCX file
             content:
               application/json:
                 schema:
@@ -739,13 +779,18 @@ def create_app(args):
                   properties:
                     downloadUrl:
                       type: string
-                      description: URL to download the converted DOCX file
+                      description: URL to download the translated DOCX file
           400:
             description: Invalid request
           500:
-            description: Conversion error
+            description: Conversion or translation error
         """
+        if args.disable_files_translation:
+            abort(403, description=_(
+                "Files translation are disabled on this server."))
 
+        source_lang = request.form.get("source")
+        target_lang = request.form.get("target")
         file = request.files.get('file')
 
         if not file or file.filename == '':
@@ -754,30 +799,28 @@ def create_app(args):
         if not file.filename.lower().endswith('.pdf'):
             abort(400, description="Invalid file format. Only PDF files are supported.")
 
-        # Secure the filename to prevent directory traversal vulnerabilities
+        if not source_lang or not target_lang:
+            abort(400, description="Source and target language must be specified.")
+
+        src_lang = next(
+            iter([l for l in languages if l.code == source_lang]), None)
+
+        if src_lang is None:
+            abort(400, description=_("%(lang)s is not supported", lang=source_lang))
+
+        tgt_lang = next(
+            iter([l for l in languages if l.code == target_lang]), None)
+
+        if tgt_lang is None:
+            abort(400, description=_("%(lang)s is not supported", lang=target_lang))
+
+        # Convert the PDF to DOCX
         secure_original_filename = secure_filename(file.filename)
-        # print(f"Secured original file name: {secure_original_filename}")
-
-        # Extract the base name of the uploaded file without its extension
-        base_filename, file_extension = os.path.splitext(
-            secure_original_filename)
-        # print(f"Base file name: {base_filename}")
-
-        # In case the file does not have a proper name before the extension
-        if not base_filename:
-            base_filename = str(uuid.uuid4())
-
-        # Sanitize base_filename to replace spaces with underscores
-        sanitized_base_filename = base_filename.replace(" ", "_")
-        # print(f"Sanetized file name: {sanitized_base_filename}")
-
-        # Now create the full path for the uploaded PDF and the output DOCX
-        upload_filename = f"{sanitized_base_filename}.pdf"
+        base_filename, _ = os.path.splitext(secure_original_filename)
+        upload_filename = f"{base_filename}.pdf"
         upload_filepath = os.path.join(get_upload_dir(), upload_filename)
-        output_filename = f"{str(uuid.uuid4())}.{sanitized_base_filename}.docx"
+        output_filename = f"{str(uuid.uuid4())}.{base_filename}.docx"
         output_filepath = os.path.join(get_upload_dir(), output_filename)
-        print(f"Output file name: {output_filename}")
-        print(f"Output file path: {output_filepath}")
 
         try:
             # Save the uploaded PDF file
@@ -788,19 +831,32 @@ def create_app(args):
             cv.convert(output_filepath, start=0, end=None)
             cv.close()
 
-            # Generate a URL for downloading the DOCX file
-            converted_file_url = url_for(
-                'Main app.download_file', filename=output_filename, _external=True)
+            # Clean the DOCX file to remove unnecessary line breaks
+            cleaned_docx_path = clean_docx_line_breaks(output_filepath)
 
-            return jsonify({'downloadUrl': converted_file_url})
+            # Now proceed to use cleaned_docx_path for the translation
+            translation_model = src_lang.get_translation(tgt_lang)
+            translated_file_path = argostranslatefiles.translate_file(
+                translation_model, cleaned_docx_path)
+
+            translated_filename = os.path.basename(translated_file_path)
+
+            translated_file_url = url_for(
+                'Main app.download_file', filename=translated_filename, _external=True)
+
+            return jsonify({'downloadUrl': translated_file_url})
 
         except Exception as e:
-            print(f"Error during file conversion: {e}")
-            abort(500, description=f"Error during file conversion: {str(e)}")
+            print(f"Error during file conversion or translation: {e}")
+            abort(
+                500, description=f"Error during file conversion or translation: {str(e)}")
 
         finally:
+            # Clean up the uploaded and converted files if they exist
             if os.path.exists(upload_filepath):
                 os.remove(upload_filepath)
+            if os.path.exists(output_filepath):
+                os.remove(output_filepath)
 
     @bp.post("/translate_file")
     @access_check
@@ -929,11 +985,6 @@ def create_app(args):
 
             file.save(filepath)
 
-            # Not an exact science: take the number of bytes and divide by
-            # the character limit. Assuming a plain text file, this will
-            # set the cost of the request to N = bytes / char_limit, which is
-            # roughly equivalent to a batch process of N batches assuming
-            # each batch uses all available limits
             if char_limit > 0:
                 request.req_cost = max(
                     1, int(os.path.getsize(filepath) / char_limit))
