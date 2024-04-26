@@ -215,7 +215,7 @@
         <div class="section no-pad-bot">
           <div class="container">
             <div class="row">
-              <h3 class="header center">{{ _h("Start translating") }}</h3>
+              <h3 class="header center">{{ _h("Privacy-First Translation") }}</h3>
               <div
                 id="translation-type-btns"
                 class="s12 center"
@@ -488,27 +488,6 @@
         {% endif %}
       </div>
     </main>
-
-    <footer class="page-footer">
-      <div class="footer-copyright center">
-        <p class="white-text">
-          {{ _h("Made with %(heart)s and powered by %(engine)s", heart='❤',
-          contributors='<a
-            class="white-text"
-            href="https://github.com/LibreTranslate/LibreTranslate/graphs/contributors"
-            rel="noopener noreferrer"
-            >%s</a
-          >' % _h("%(libretranslate)s Contributors",
-          libretranslate="LibreTranslate"), engine='<a
-            class="white-text text-lighten-3"
-            href="https://github.com/argosopentech/argos-translate/"
-            rel="noopener noreferrer"
-            >Argos Translate</a
-          >') }}
-        </p>
-      </div>
-    </footer>
-
     <script src="{{ url_for('static', filename='js/materialize.min.js') }}"></script>
     <script>
       // @license magnet:?xt=urn:btih:0b31508aeb0634b347b8270c7bee4d411b5d4109&dn=agpl-3.0.txt AGPL-3.0
