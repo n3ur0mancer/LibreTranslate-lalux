@@ -257,6 +257,9 @@
                 </button>
               </div>
               <form id="translation-form" class="col s12">
+                <div class="progress" v-if="loadingConversion">
+                  <div class="indeterminate"></div>
+                </div>
                 <div class="row mb-0">
                   <div class="col s6 language-select">
                     <span id="sourceLangLabel">{{ _h("Translate from") }}</span>

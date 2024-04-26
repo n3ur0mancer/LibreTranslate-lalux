@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function(){
             frontendTimeout: 500,
 
             apiSecret: "{{ api_secret }}",
-
+            loadingConversion: false,
             // convertType: "",
             pdfFile: null, 
         },
