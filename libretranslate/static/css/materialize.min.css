@@ -2378,7 +2378,7 @@ th {
 .progress .indeterminate:before {
   content: "";
   position: absolute;
-  background-color: inherit;
+  background-color: #ff6200;
   top: 0;
   left: 0;
   bottom: 0;
@@ -2390,7 +2390,7 @@ th {
 .progress .indeterminate:after {
   content: "";
   position: absolute;
-  background-color: inherit;
+  background-color: #ff6200;
   top: 0;
   left: 0;
   bottom: 0;
