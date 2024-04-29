@@ -214,6 +214,9 @@ document.addEventListener('DOMContentLoaded', function(){
             handleInput: function(e){
                 this.closeSuggestTranslation(e)
 
+                // Apply regex rule to clean the input text
+                this.inputText = this.inputText.replace(/(?<=[^.!?])\n/g, '');
+
                 this.updateQueryParam('source', this.sourceLang)
                 this.updateQueryParam('target', this.targetLang)
                 this.updateQueryParam('q', this.inputText)
