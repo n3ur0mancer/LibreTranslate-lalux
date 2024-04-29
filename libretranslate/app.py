@@ -337,15 +337,15 @@ def create_app(args):
                     key_missing = api_keys_db.lookup(ak) is None
 
                     if (args.require_api_key_origin
-                            and key_missing
-                            and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
-                        ):
+                                and key_missing
+                                and not re.match(args.require_api_key_origin, request.headers.get("Origin", ""))
+                            ):
                         need_key = True
 
                     if (args.require_api_key_secret
-                            and key_missing
-                            and not secret.secret_match(get_req_secret())
-                        ):
+                                and key_missing
+                                and not secret.secret_match(get_req_secret())
+                            ):
                         need_key = True
 
                     if need_key:
@@ -495,14 +495,6 @@ def create_app(args):
         response.headers.add("Access-Control-Max-Age", 60 * 60 * 24 * 20)
         return response
 
-    def clean_text(text):
-        # Define the regular expression pattern to identify unwanted line breaks
-        # This regex matches line breaks that are not preceded by common sentence-ending punctuation
-        pattern = re.compile(r'(?<=[^.!?])\n')
-        # Replace unwanted line breaks with a space
-        cleaned_text = re.sub(pattern, ' ', text)
-        return cleaned_text
-
     @bp.post("/translate")
     @access_check
     def translate():
@@ -630,7 +622,7 @@ def create_app(args):
             # Normalize line endings to UNIX style (LF) only so we can consistently
             # enforce character limits.
             # https://www.rfc-editor.org/rfc/rfc2046#section-4.1.1
-            q = clean_text(q)
+            q = "\n".join(q.splitlines())
 
         char_limit = get_char_limit(args.char_limit, api_keys_db)
 
