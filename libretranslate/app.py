@@ -41,6 +41,122 @@ from .api_keys import Database, RemoteDatabase
 from .suggestions import Database as SuggestionsDatabase
 
 
+import psycopg2
+from psycopg2 import sql
+from dotenv import load_dotenv
+import re
+import time
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Helper Function to Normalize Text
+def normalize_text(text):
+    # Normalize text: lowercase and remove punctuation (simple example, can be enhanced)
+    text = re.sub(r'[^\w\s/]', '', text)
+    return text.lower()
+
+class PostgresDB:
+    def __init__(self):
+        self.host = os.getenv('DB_HOST')
+        self.port = os.getenv('DB_PORT')
+        self.dbname = os.getenv('DB_NAME')
+        self.user = os.getenv('DB_USER_READER')
+        self.password = os.getenv('DB_PASSWORD')
+        self.connection = None
+
+    def connect(self):
+        try:
+            self.connection = psycopg2.connect(
+                host=self.host,
+                port=self.port,
+                dbname=self.dbname,
+                user=self.user,
+                password=self.password
+            )
+            print("Connection successful")
+        except Exception as e:
+            print(f"Error connecting to database: {e}")
+
+    def close(self):
+        if self.connection:
+            self.connection.close()
+            print("Connection closed")
+    
+    def fetch_snippets(self, source_language, target_language):
+        try:
+            with self.connection.cursor() as cursor:
+                query = sql.SQL("""
+                    SELECT id, {source_field}, {target_field}
+                    FROM translations
+                """).format(
+                    source_field=sql.Identifier(source_language),
+                    target_field=sql.Identifier(target_language)
+                )
+                cursor.execute(query)
+                return cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching snippets: {e}")
+            return []
+    
+    def find_snippets_in_text(self, source_language, target_language, text):
+        if source_language not in ["fr", "de", "en"]:
+            return "Invalid source language"
+        
+        if target_language not in ["fr", "de", "en"]:
+            return "Invalid target language"
+        
+        snippets = self.fetch_snippets(source_language, target_language)
+        normalized_text = normalize_text(text)
+        
+        replacements = []
+        start_time = time.time()  # Start measuring time
+        for snippet_id, snippet, translation in snippets:
+            normalized_snippet = normalize_text(snippet)
+            if normalized_snippet in normalized_text:
+                replacements.append((snippet, str(snippet_id)))
+        
+        # Perform replacements in the original text
+        for snippet, snippet_id in replacements:
+            text = text.replace(snippet, snippet_id)
+        
+        end_time = time.time()  # End measuring time
+
+        # Calculate time taken for the operation
+        time_taken = end_time - start_time
+        print(f"Finished in: {time_taken:.4f} s")
+
+        return text
+
+    def replace_ids_with_translations(self, target_language, text):
+        try:
+            with self.connection.cursor() as cursor:
+                query = sql.SQL("""
+                    SELECT id, {target_field}
+                    FROM translations
+                """).format(
+                    target_field=sql.Identifier(target_language)
+                )
+                cursor.execute(query)
+                translations = cursor.fetchall()
+                
+                id_to_translation = {str(id): translation for id, translation in translations}
+                
+                def replace_id(match):
+                    snippet_id = match.group(0)
+                    return id_to_translation.get(snippet_id, snippet_id)
+                
+                # Replace IDs with translations
+                text = re.sub(r'\b\d+\b', replace_id, text)
+                
+                return text
+        except Exception as e:
+            print(f"Error replacing IDs with translations: {e}")
+            return text
+
+db = PostgresDB()
+db.connect()
+
 def get_version():
     try:
         with open("VERSION") as f:
@@ -680,18 +796,20 @@ def create_app(args):
             if batch:
                 results = []
                 for text in q:
+                    preprocessed_text = db.find_snippets_in_text(source_lang, target_lang, text)
                     translator = src_lang.get_translation(tgt_lang)
                     if translator is None:
                         abort(400, description=_("%(tname)s (%(tcode)s) is not available as a target language from %(sname)s (%(scode)s)", tname=_lazy(
                             tgt_lang.name), tcode=tgt_lang.code, sname=_lazy(src_lang.name), scode=src_lang.code))
 
                     if text_format == "html":
-                        translated_text = str(translate_html(translator, text))
+                        translated_text = str(translate_html(translator, preprocessed_text))
                     else:
                         translated_text = improve_translation_formatting(
-                            text, translator.translate(text))
+                            preprocessed_text, translator.translate(preprocessed_text))
 
-                    results.append(unescape(translated_text))
+                    postprocessed_text = db.replace_ids_with_translations(target_lang, translated_text)
+                    results.append(unescape(postprocessed_text))
                 if source_lang == "auto":
                     return jsonify(
                         {
@@ -706,35 +824,37 @@ def create_app(args):
                         }
                     )
             else:
+                preprocessed_text = db.find_snippets_in_text(source_lang, target_lang, q)
                 translator = src_lang.get_translation(tgt_lang)
                 if translator is None:
                     abort(400, description=_("%(tname)s (%(tcode)s) is not available as a target language from %(sname)s (%(scode)s)", tname=_lazy(
                         tgt_lang.name), tcode=tgt_lang.code, sname=_lazy(src_lang.name), scode=src_lang.code))
 
                 if text_format == "html":
-                    translated_text = str(translate_html(translator, q))
+                    translated_text = str(translate_html(translator, preprocessed_text))
                 else:
                     translated_text = improve_translation_formatting(
-                        q, translator.translate(q))
+                        preprocessed_text, translator.translate(preprocessed_text))
 
+                postprocessed_text = db.replace_ids_with_translations(target_lang, translated_text)
                 if source_lang == "auto":
                     return jsonify(
                         {
-                            "translatedText": unescape(translated_text),
+                            "translatedText": unescape(postprocessed_text),
                             "detectedLanguage": detected_src_lang
                         }
                     )
                 else:
                     return jsonify(
                         {
-                            "translatedText": unescape(translated_text)
+                            "translatedText": unescape(postprocessed_text)
                         }
                     )
         except Exception as e:
             raise e
             abort(500, description=_(
                 "Cannot translate text: %(text)s", text=str(e)))
-
+        
     @bp.post("/convert_file")
     @access_check
     def convert_file():
