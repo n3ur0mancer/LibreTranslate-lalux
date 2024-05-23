@@ -44,18 +44,18 @@ from .suggestions import Database as SuggestionsDatabase
 import psycopg2
 from psycopg2 import sql
 from dotenv import load_dotenv
-import re
 import time
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Helper Function to Normalize Text
+### Snippet handling in raw text ###
+
 def normalize_text(text):
     # Normalize text: lowercase and remove punctuation (simple example, can be enhanced)
     text = re.sub(r'[^\w\s/]', '', text)
     return text.lower()
 
+# Database connection class with functions to fetch snippets and handle the special translations in raw text
 class PostgresDB:
     def __init__(self):
         self.host = os.getenv('DB_HOST')
@@ -157,45 +157,70 @@ class PostgresDB:
 db = PostgresDB()
 db.connect()
 
+
+### Snippet handling in files ###
+
+# Replacing found snippets in the original file with the snippet ids
 def replace_snippets_with_ids(doc, source_lang, target_lang):
     for para in doc.paragraphs:
-        replace_snippets_in_runs(para.runs, source_lang, target_lang)
+        replace_snippets_in_paragraph(para, source_lang, target_lang)
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 for para in cell.paragraphs:
-                    replace_snippets_in_runs(para.runs, source_lang, target_lang)
+                    replace_snippets_in_paragraph(para, source_lang, target_lang)
     return doc
 
-def replace_snippets_in_runs(runs, source_lang, target_lang):
-    full_text = ''.join([run.text for run in runs])
+# Handling the paragraphs in the files
+def replace_snippets_in_paragraph(paragraph, source_lang, target_lang):
+    full_text = ''.join(run.text for run in paragraph.runs)
     replaced_text = db.find_snippets_in_text(source_lang, target_lang, full_text)
     
+    if full_text != replaced_text:
+        apply_replaced_text(paragraph, replaced_text)
+
+# Handling the runs (segment of text in a pargraph)
+def apply_replaced_text(paragraph, replaced_text):
+    runs = list(paragraph.runs)
     current_pos = 0
+    
     for run in runs:
         run_length = len(run.text)
-        run.text = replaced_text[current_pos:current_pos + run_length]
+        if current_pos < len(replaced_text):
+            run.text = replaced_text[current_pos:current_pos + run_length]
+        else:
+            run.text = ''
         current_pos += run_length
+    
+    if current_pos < len(replaced_text):
+        remaining_text = replaced_text[current_pos:]
+        new_run = paragraph.add_run(remaining_text)
+        new_run.font.bold = runs[-1].font.bold
+        new_run.font.italic = runs[-1].font.italic
+        new_run.font.underline = runs[-1].font.underline
+        new_run.font.color.rgb = runs[-1].font.color.rgb
+        new_run.font.size = runs[-1].font.size
+        new_run.font.name = runs[-1].font.name
 
+# Replace the placeholder ids in the file
 def replace_ids_with_translations_in_docx(doc, target_lang):
     for para in doc.paragraphs:
-        replace_ids_in_runs(para.runs, target_lang)
+        replace_ids_in_paragraph(para, target_lang)
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 for para in cell.paragraphs:
-                    replace_ids_in_runs(para.runs, target_lang)
+                    replace_ids_in_paragraph(para, target_lang)
     return doc
 
-def replace_ids_in_runs(runs, target_lang):
-    full_text = ''.join([run.text for run in runs])
+# Handlign the replacemetn of ids in the paragraphs
+def replace_ids_in_paragraph(paragraph, target_lang):
+    full_text = ''.join(run.text for run in paragraph.runs)
     replaced_text = db.replace_ids_with_translations(target_lang, full_text)
     
-    current_pos = 0
-    for run in runs:
-        run_length = len(run.text)
-        run.text = replaced_text[current_pos:current_pos + run_length]
-        current_pos += run_length
+    if full_text != replaced_text:
+        apply_replaced_text(paragraph, replaced_text)
+
 
 def get_version():
     try:
