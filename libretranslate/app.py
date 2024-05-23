@@ -118,7 +118,7 @@ class PostgresDB:
         
         # Perform replacements in the original text
         for snippet, snippet_id in replacements:
-            text = text.replace(snippet, snippet_id)
+            text = re.sub(re.escape(snippet), snippet_id, text, flags=re.IGNORECASE)
         
         end_time = time.time()  # End measuring time
 
