@@ -108,7 +108,7 @@ _default_options_objects = [
     },
     {
         'name': 'FRONTEND_LANGUAGE_SOURCE',
-        'default_value': 'auto',
+        'default_value': 'fr',
         'value_type': 'str'
     },
     {
