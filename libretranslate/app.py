@@ -636,8 +636,15 @@ def create_app(args):
                       type: string
                     description: Supported target language codes
         """
-        return jsonify([{"code": l.code, "name": _lazy(l.name), "targets": language_pairs.get(l.code, [])} for l in languages])
-
+        supported_languages = ["en", "fr", "de"]
+        return jsonify([
+            {
+                "code": l.code,
+                "name": _lazy(l.name),
+                "targets": [t for t in language_pairs.get(l.code, []) if t in supported_languages]
+            }
+            for l in load_languages()
+        ])
     # Add cors
     @bp.after_request
     def after_request(response):
@@ -752,6 +759,7 @@ def create_app(args):
                   type: string
                   description: Error message
         """
+
         if request.is_json:
             json = get_json_dict(request)
             q = json.get("q")
@@ -765,14 +773,16 @@ def create_app(args):
             text_format = request.values.get("format")
 
         if not q:
-            abort(400, description=_(
-                "Invalid request: missing %(name)s parameter", name='q'))
+            abort(400, description=_("Invalid request: missing %(name)s parameter", name='q'))
         if not source_lang:
-            abort(400, description=_(
-                "Invalid request: missing %(name)s parameter", name='source'))
+            abort(400, description=_("Invalid request: missing %(name)s parameter", name='source'))
         if not target_lang:
-            abort(400, description=_(
-                "Invalid request: missing %(name)s parameter", name='target'))
+            abort(400, description=_("Invalid request: missing %(name)s parameter", name='target'))
+
+        if source_lang not in ["en", "fr", "de"]:
+            abort(400, description=_("%(lang)s is not supported", lang=source_lang))
+        if target_lang not in ["en", "fr", "de"]:
+            abort(400, description=_("%(lang)s is not supported", lang=target_lang))
 
         if not request.is_json:
             # Normalize line endings to UNIX style (LF) only so we can consistently
