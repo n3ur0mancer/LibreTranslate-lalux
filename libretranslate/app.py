@@ -157,6 +157,46 @@ class PostgresDB:
 db = PostgresDB()
 db.connect()
 
+def replace_snippets_with_ids(doc, source_lang, target_lang):
+    for para in doc.paragraphs:
+        replace_snippets_in_runs(para.runs, source_lang, target_lang)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    replace_snippets_in_runs(para.runs, source_lang, target_lang)
+    return doc
+
+def replace_snippets_in_runs(runs, source_lang, target_lang):
+    full_text = ''.join([run.text for run in runs])
+    replaced_text = db.find_snippets_in_text(source_lang, target_lang, full_text)
+    
+    current_pos = 0
+    for run in runs:
+        run_length = len(run.text)
+        run.text = replaced_text[current_pos:current_pos + run_length]
+        current_pos += run_length
+
+def replace_ids_with_translations_in_docx(doc, target_lang):
+    for para in doc.paragraphs:
+        replace_ids_in_runs(para.runs, target_lang)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    replace_ids_in_runs(para.runs, target_lang)
+    return doc
+
+def replace_ids_in_runs(runs, target_lang):
+    full_text = ''.join([run.text for run in runs])
+    replaced_text = db.replace_ids_with_translations(target_lang, full_text)
+    
+    current_pos = 0
+    for run in runs:
+        run_length = len(run.text)
+        run.text = replaced_text[current_pos:current_pos + run_length]
+        current_pos += run_length
+
 def get_version():
     try:
         with open("VERSION") as f:
@@ -1112,9 +1152,31 @@ def create_app(args):
                 request.req_cost = max(
                     1, int(os.path.getsize(filepath) / char_limit))
 
+            # Step 1: Load the docx file
+            doc = Document(filepath)
+
+            # Step 2: Replace snippets with IDs in the docx content
+            doc = replace_snippets_with_ids(doc, source_lang, target_lang)
+            
+            # Save the modified document
+            preprocessed_filepath = filepath.replace(".docx", "_preprocessed.docx")
+            doc.save(preprocessed_filepath)
+
+            # Step 3: Translate the preprocessed file
             translated_file_path = argostranslatefiles.translate_file(
-                src_lang.get_translation(tgt_lang), filepath)
-            translated_filename = os.path.basename(translated_file_path)
+                src_lang.get_translation(tgt_lang), preprocessed_filepath)
+
+            # Step 4: Load the translated docx file
+            translated_doc = Document(translated_file_path)
+
+            # Step 5: Replace IDs with actual translations
+            translated_doc = replace_ids_with_translations_in_docx(translated_doc, target_lang)
+            
+            # Save the final translated document
+            final_translated_filepath = translated_file_path.replace("_preprocessed", "_final")
+            translated_doc.save(final_translated_filepath)
+
+            translated_filename = os.path.basename(final_translated_filepath)
 
             return jsonify(
                 {
