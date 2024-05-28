@@ -111,7 +111,11 @@ class PostgresDB:
         
         replacements = []
         start_time = time.time()  # Start measuring time
-        for snippet_id, snippet, translation in snippets:
+
+        # Sort snippets by length in descending order to prioritize longer matches
+        sorted_snippets = sorted(snippets, key=lambda x: len(x[1]), reverse=True)
+
+        for snippet_id, snippet, translation in sorted_snippets:
             normalized_snippet = normalize_text(snippet)
             if normalized_snippet in normalized_text:
                 replacements.append((snippet, str(snippet_id)))
@@ -127,6 +131,7 @@ class PostgresDB:
         print(f"Finished in: {time_taken:.4f} s")
 
         return text
+
 
     def replace_ids_with_translations(self, target_language, text):
         try:
