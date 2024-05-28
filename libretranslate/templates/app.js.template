@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function(){
                             var res = JSON.parse(this.response);
                             // Success!
                             if (res.translatedText !== undefined){
-                                self.translatedText = res.translatedText.replace(/(\*\s|\d\.\s|•\s)/g, '\n$1');
+                                self.translatedText = res.translatedText.replace(/([^\n])(\*\s|\d\.\s|•\s)/g, '$1\n$2');
                                 self.loadingTranslation = false;
                                 self.output = JSON.stringify(res, null, 4);
                                 if(self.sourceLang == "auto" && res.detectedLanguage !== undefined){
