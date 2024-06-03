@@ -112,6 +112,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+ll-translate/
 
 # Spyder project settings
 .spyderproject
