@@ -1,7 +1,7 @@
 import re
 import time
 from psycopg2 import sql
-from .database import normalize_text, PostgresDB
+from .database import normalize_snippets, PostgresDB
 
 db = PostgresDB()
 db.connect()
@@ -14,16 +14,16 @@ def find_snippets_in_text(source_language, target_language, text):
         return "Invalid target language"
 
     snippets = db.fetch_snippets(source_language, target_language)
-    normalized_text = normalize_text(text)
+    normalized_text = normalize_snippets(text)
 
     replacements = []
-    start_time = time.time() 
+    start_time = time.time()
 
     # Sort snippets by length in descending order to prioritize longer matches
     sorted_snippets = sorted(snippets, key=lambda x: len(x[1]), reverse=True)
 
     for snippet_id, snippet, translation in sorted_snippets:
-        normalized_snippet = normalize_text(snippet)
+        normalized_snippet = normalize_snippets(snippet)
         if normalized_snippet in normalized_text:
             replacements.append((snippet, str(snippet_id)))
 
@@ -38,7 +38,6 @@ def find_snippets_in_text(source_language, target_language, text):
     print(f"Finished in: {time_taken:.4f} s")
 
     return text
-
 
 def replace_ids_with_translations_in_raw_text(target_language, text):
     try:
@@ -59,13 +58,13 @@ def replace_ids_with_translations_in_raw_text(target_language, text):
                 return id_to_translation.get(snippet_id, snippet_id)
 
             # Replace IDs with translations
-            text = re.sub(r'\b\d+\b', replace_id, text)
+            text = re.sub(r'\b[a-zA-Z]{2}\d+\b', replace_id, text)
 
             return text
     except Exception as e:
         print(f"Error replacing IDs with translations: {e}")
+        db.connection.rollback()  # Reset the transaction state
         return text
-
 
 def replace_snippets_with_ids(doc, source_lang, target_lang):
     for para in doc.paragraphs:

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def normalize_text(text):
+def normalize_snippets(text):
     # Normalize text: lowercase and remove punctuation (simple example, can be enhanced)
     text = re.sub(r'[^\w\s/]', '', text)
     return text.lower()
